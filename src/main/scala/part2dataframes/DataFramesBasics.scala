@@ -75,4 +75,12 @@ object DataFramesBasics extends App {
 
   manualCarsDF.printSchema()
   manualCarsDFWithImplicits.printSchema()
+
+  var moviesDFWithSchema = spark.read
+    .format("json")
+    .option("inferSchema", "true")
+    .load("src/main/resources/data/movies.json")
+
+  moviesDFWithSchema.printSchema()
+  println(moviesDFWithSchema.count())
 }
