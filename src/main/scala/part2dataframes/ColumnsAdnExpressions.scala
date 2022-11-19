@@ -98,5 +98,26 @@ object ColumnsAdnExpressions extends App {
   // distinct
   val allCountriesDF = carsDF.select("Origin").distinct()
 
-  allCountriesDF.show()
+  /*
+  * Exercises
+  *
+
+  *
+  * */
+
+  val moviesDF = spark.read
+    .option("inferSchema", "true")
+    .json("src/main/resources/data/movies.json")
+
+  // 1. Read the movies and select 2 columns of your choice
+  moviesDF.select("Title", "Director")
+
+  // 2. create another column 'total_profit' = all gross
+
+  val withTotalProfitColumnDF = moviesDF.withColumn("Total_Profit", expr("US_Gross + Worldwide_Gross"))
+
+  // 3. select all comedy movies with rating imdb_rating > 6
+  val goodComedyMoviesDF = moviesDF.filter("Major_Genre = 'Comedy' AND IMDB_Rating > 6")
+
+  goodComedyMoviesDF.show()
 }
