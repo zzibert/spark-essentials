@@ -1,7 +1,9 @@
 package part2dataframes
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.expr
+import org.apache.spark.sql.functions.{ col, expr, max }
+import part2dataframes.Aggregations.moviesDF
+import part2dataframes.DataSources.spark
 
 object Joins extends App {
 
@@ -58,5 +60,79 @@ object Joins extends App {
   guitaristsDF.join(bandsModifierDF, guitaristsDF.col("band") === bandsModifierDF.col("band_id"))
 
   // using complex types
-  guitaristsDF.join(guitarsDF.withColumnRenamed("id", "guitarId"), expr("array_contains(guitars, guitarId)")).show()
+  guitaristsDF.join(guitarsDF.withColumnRenamed("id", "guitarId"), expr("array_contains(guitars, guitarId)"))
+
+  /*
+  *
+  *
+  *
+  * */
+
+  val employeesDF =
+    spark.read
+      .format("jdbc")
+      .option("driver", "org.postgresql.Driver")
+      .option("url", "jdbc:postgresql://localhost:5432/rtjvm")
+      .option("user", "docker")
+      .option("password", "docker")
+      .option("dbtable", "public.employees")
+      .load()
+
+  val salariesDf =
+    spark.read
+      .format("jdbc")
+      .option("driver", "org.postgresql.Driver")
+      .option("url", "jdbc:postgresql://localhost:5432/rtjvm")
+      .option("user", "docker")
+      .option("password", "docker")
+      .option("dbtable", "public.salaries")
+      .load()
+
+  val deptManagersDf =
+    spark.read
+      .format("jdbc")
+      .option("driver", "org.postgresql.Driver")
+      .option("url", "jdbc:postgresql://localhost:5432/rtjvm")
+      .option("user", "docker")
+      .option("password", "docker")
+      .option("dbtable", "public.dept_manager")
+      .load()
+
+  val titlesDf =
+    spark.read
+      .format("jdbc")
+      .option("driver", "org.postgresql.Driver")
+      .option("url", "jdbc:postgresql://localhost:5432/rtjvm")
+      .option("user", "docker")
+      .option("password", "docker")
+      .option("dbtable", "public.titles")
+      .load()
+
+  // 1. show all employees and their max salaries
+  val maxSalariesByEmployee = salariesDf
+    .groupBy("emp_no")
+    .agg(
+      max("salary").as("max_salary")
+    )
+
+  val employeesWithMaxSalary =
+    employeesDF.join(maxSalariesByEmployee, employeesDF.col("emp_no") === maxSalariesByEmployee.col("emp_no"))
+      .drop(maxSalariesByEmployee.col("emp_no"))
+
+  // 2. show all employees who were never managers
+  val employeesWhoWereNeverManagersDF =
+    employeesDF.join(deptManagersDf, employeesDF.col("emp_no") === deptManagersDf.col("emp_no"), "left_anti")
+
+  //  3. find job titles of the best paid 10 employees
+  val mostRecentJobTitleDF = titlesDf.groupBy("emp_no", "title").agg(
+    max("to_date")
+  )
+  val bestPaidEmployeesDF = employeesWithMaxSalary.orderBy(col("max_salary").desc).limit(10)
+
+  bestPaidEmployeesDF.join(mostRecentJobTitleDF, "emp_no").show()
+
+
+
+
+
 }
