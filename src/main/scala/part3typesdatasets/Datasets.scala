@@ -1,7 +1,7 @@
 package part3typesdatasets
 
 
-import org.apache.spark.sql.functions.{ avg, col }
+import org.apache.spark.sql.functions.{ array_contains, avg, col, expr }
 import org.apache.spark.sql.{ DataFrame, Dataset, Encoders, SparkSession }
 
 object Datasets extends App {
@@ -58,22 +58,43 @@ object Datasets extends App {
 
 
   // 1. count how many cars we have
-  println(carsDS.count()) // 406
 
   // 2. how many powerful cars horsepower > 140
-  println(carsDS.filter(car => car.Horsepower.exists(_ > 140)).count()) // 81
-
   // 3. Compute the avg for the entire dataset
   val numberOfCars = carsDS.count()
   val horsepowers = carsDS
     .flatMap(_.Horsepower)
     .reduce(_ + _)
 
-  println(horsepowers / numberOfCars) // 103
 
   // you can also use DF functions
-  carsDS.select(avg(col("Horsepower"))).show()
+  carsDS.select(avg(col("Horsepower")))
 
 
+  case class Guitar(id: Long, model: String, make: String, guitarType: String)
+
+  case class GuitarPlayer(id: Long, name: String, guitars: Seq[Long], band: Long)
+
+  case class Band(id: Long, name: String, hometown: String, year: Long)
+
+  val guitarsDS = readDF("guitars.json").as[Guitar]
+  val guitarPlayersDS = readDF("guitarPlayers.json").as[GuitarPlayer]
+  val bandsDS = readDF("bands.json").as[Band]
+
+  val guitarPlayerBandsDS: Dataset[(GuitarPlayer, Band)] = guitarPlayersDS.joinWith(bandsDS, guitarPlayersDS.col("band") === bandsDS.col("id"))
+
+  guitarPlayerBandsDS
+
+  /**
+    * 1. join the guitarDS and guitarPLayersDS - array_contains, outer_join
+    */
+  val guitarsAndGuitarPlayersDS: Dataset[(Guitar, GuitarPlayer)] = guitarsDS.joinWith(guitarPlayersDS, array_contains(guitarPlayersDS.col("guitars"), guitarsDS.col("id")), "outer")
+
+  // grouping DS
+
+  val carsGroupedByOrigin = carsDS.groupByKey(_.Origin).count()
+
+
+  // joins and groups are wide transformations - will involve shuffle information
 
 }
